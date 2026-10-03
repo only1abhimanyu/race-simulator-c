@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <windows.h> //experimental
+#include <windows.h> // experimental
 
 // Structures section
 typedef struct Race {
@@ -16,6 +16,37 @@ typedef struct RaceCar {
   int totalLapTime;
 } RaceCar;
 
+// Cross-platform (Windows) console clear using WinAPI for reliability
+void clearConsole() {
+  HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (hConsole != INVALID_HANDLE_VALUE) {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(hConsole, &csbi)) {
+      DWORD cellCount = (DWORD)(csbi.dwSize.X * csbi.dwSize.Y);
+      COORD homeCoords = {0, 0};
+      DWORD count;
+      FillConsoleOutputCharacter(hConsole, ' ', cellCount, homeCoords, &count);
+      FillConsoleOutputAttribute(hConsole, csbi.wAttributes, cellCount, homeCoords, &count);
+      SetConsoleCursorPosition(hConsole, homeCoords);
+      return;
+    } else {
+      /* If we're not attached to a traditional console (for example the
+         VS Code integrated terminal uses a pseudo-tty), GetConsoleScreenBufferInfo
+         may fail. Try enabling virtual terminal processing so ANSI escapes work,
+         then fall back to printing an ANSI clear sequence below. */
+      DWORD mode = 0;
+      if (GetConsoleMode(hConsole, &mode)) {
+        SetConsoleMode(hConsole, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+      }
+    }
+  }
+
+  /* Fallback: print ANSI clear screen + cursor-home. This works in many
+     terminals (including VS Code integrated terminal) once VT processing is enabled. */
+  printf("\x1b[2J\x1b[H");
+  fflush(stdout);
+}
+
 
 // Print functions section
 void printIntro(){
@@ -25,24 +56,29 @@ void printIntro(){
 //experimental (using windows header file for first time)
 void printCountDown(){
   printf("\nRacers Ready! In...\n");
-	Sleep(1000); // Pauses for 1000 milliseconds (1 second)
-  	system("cls"); //clear console
-	printf("5\n");
-  	Sleep(1000);
-	system("cls");
-  	printf("4\n");
-  	Sleep(1000);
-	system("cls");
-  	printf("3\n");
-  	Sleep(1000);
-	system("cls");
-  	printf("2\n");
-  	Sleep(1000);
-	system("cls");
-  	printf("1\n");
-  	Sleep(1000);
-	system("cls");
-  	printf("Race!\n");
+  /* Make clearing the console more reliable than system("cls") and ensure
+     visible output by flushing stdout before sleeps. */
+  Sleep(1000); // Pauses for 1000 milliseconds (1 second)
+  // clear and show numbers with flushes so they appear in terminals
+  // We'll replace system("cls") with clearConsole() implemented below.
+
+  clearConsole();
+  printf("5\n"); fflush(stdout);
+  Sleep(1000);
+  clearConsole();
+  printf("4\n"); fflush(stdout);
+  Sleep(1000);
+  clearConsole();
+  printf("3\n"); fflush(stdout);
+  Sleep(1000);
+  clearConsole();
+  printf("2\n"); fflush(stdout);
+  Sleep(1000);
+  clearConsole();
+  printf("1\n"); fflush(stdout);
+  Sleep(1000);
+  clearConsole();
+  printf("\nRace!\n"); fflush(stdout);
 }
 //conventional code
 void printFirstPlaceAfterLap(struct Race* race){
@@ -55,10 +91,10 @@ void printCongratulation(struct Race* race){
 
 // Logic functions section
 int calculateTimeToCompleteLap(){
-  int speed = (rand() % 3) + 1;
-  int acceleration = (rand() % 3) + 1;
-  int nerves = (rand() % 3) + 1;
-  return speed + acceleration + nerves;
+  /* Return a more varied lap time (1-10) so races diverge more often.
+     Lower value = faster (better). */
+  int lapTime = (rand() % 10) + 1; // 1..10
+  return lapTime;
 }
 void updateRaceCar(struct RaceCar* raceCar){
   raceCar-> totalLapTime = raceCar -> totalLapTime + calculateTimeToCompleteLap();
